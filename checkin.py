@@ -398,17 +398,54 @@ class PushService:
 
     def send(self, title: str, content: str) -> bool:
         """发送推送"""
-        if not self.config.push_key:
-            logger.info(f"{LogEmoji.WARNING} 未设置推送密钥，跳过推送通知。")
-            return False
+        import logging
+        
+        # ==================== 1. 智能提醒过滤逻辑 ====================
+        need_notify = False
+        
+        if "脚本执行出错" in title or "未找到 cookies" in title:
+            need_notify = True
+        else:
+            for line in content.split('\n'):
+                if ("失败" in line or "异常" in line or "没有权限" in line) and "Today's observation logged" not in line:
+                    need_notify = True
 
+        if not need_notify:
+            logging.info("🎉 当前签到成功或今日已签到，无需烦人通知，跳过推送！")
+            return False
+        # ==============================================================
+
+        # ==================== 2. Bark 完整私有地址推送 ==================
+        import os, requests
+        # 读取完整的私有 Bark 地址（例如: https://mybark.com/mykey ）
+        bark_url_base = os.environ.get("BARK_URL")
+        
+        if bark_url_base:
+            try:
+                # 替换换行符，防止正文断裂
+                safe_content = content.replace("\n", "%0A")
+                
+                # 清理环境变量末尾可能多带的斜杠
+                bark_url_base = bark_url_base.rstrip("/")
+                
+                # 拼接完整请求 URL，加入音效 (sound=fart2) 和分组参数
+                bark_url = f"{bark_url_base}/{title}/{safe_content}?group=glados&sound=fart2"
+                
+                requests.get(bark_url)
+                logging.info("✅ Bark 私有地址通知发送成功 (包含 fart2 音效)。")
+            except Exception as e:
+                logging.error(f"❌ 发送 Bark 通知失败: {e}")
+        # ==============================================================
+        
+        # 3. 原版的 PushDeer 逻辑 
+        if not self.config.push_key:
+            return False
         try:
+            from pypushdeer import PushDeer
             pushdeer = PushDeer(pushkey=self.config.push_key)
             pushdeer.send_text(title, desp=content)
-            logger.info(f"{LogEmoji.SUCCESS} 推送通知发送成功。")
             return True
-        except Exception as e:
-            logger.error(f"{LogEmoji.ERROR} 发送推送通知失败: {e}")
+        except Exception:
             return False
 
 
