@@ -98,15 +98,13 @@ class Config:
     ENV_COOKIES = "GLADOS_COOKIES"
     ENV_EXCHANGE_PLAN = "GLADOS_EXCHANGE_PLAN"
     ENV_VERBOSE = "GLADOS_VERBOSE"
+    ENV_ENABLE_MULTIPLE_DOMAINS = "GLADOS_ENABLE_MULTIPLE_DOMAINS"
 
     """默认兑换计划（none 表示不自动兑换）"""
     DEFAULT_EXCHANGE_PLAN = "none"
 
     """默认是否输出详细响应"""
     DEFAULT_VERBOSE = False
-
-    """默认域名"""
-    DOMAINS = ["glados.cloud", "railgun.info"]
 
     """兑换计划列表"""
     EXCHANGE_PLANS = {
@@ -120,6 +118,7 @@ class Config:
         self.cookies_list: List[str] = []
         self.exchange_plan: str = self.DEFAULT_EXCHANGE_PLAN
         self.verbose: bool = self.DEFAULT_VERBOSE
+        self.domains: List[str] = ["glados.cloud"]
         self._load_config()
 
     def _load_config(self) -> None:
@@ -128,6 +127,7 @@ class Config:
         raw_cookies_env: Optional[str] = os.environ.get(self.ENV_COOKIES)
         exchange_plan_env: Optional[str] = os.environ.get(self.ENV_EXCHANGE_PLAN)
         verbose_env: Optional[str] = os.environ.get(self.ENV_VERBOSE)
+        enable_multiple_domains_env: Optional[str] = os.environ.get(self.ENV_ENABLE_MULTIPLE_DOMAINS)
 
         if not push_key_env:
             logger.warning(f"{LogEmoji.WARNING} 环境变量 '{self.ENV_PUSH_KEY}' 未设置。")
@@ -168,6 +168,16 @@ class Config:
                 logger.warning(f"{LogEmoji.WARNING} 环境变量 '{self.ENV_VERBOSE}' 的值 '{verbose_env}' 无效，将使用默认值 {self.DEFAULT_VERBOSE}。")
 
         logger.info(f"{LogEmoji.INFO} 当前 {self.ENV_VERBOSE}: {self.verbose}。")
+
+        if enable_multiple_domains_env is not None:
+            enable_env_lower = enable_multiple_domains_env.lower()
+            if enable_env_lower in ["true", "1", "yes", "y"]:
+                self.domains = ["glados.cloud", "railgun.info"]
+                logger.info(f"{LogEmoji.INFO} 环境变量 '{self.ENV_ENABLE_MULTIPLE_DOMAINS}' 已开启，将同时签到 glados 和 railgun 域名。")
+            else:
+                logger.info(f"{LogEmoji.INFO} 环境变量 '{self.ENV_ENABLE_MULTIPLE_DOMAINS}' 未开启，仅签到默认的 glados.cloud 域名。")
+        else:
+            logger.info(f"{LogEmoji.INFO} 未设置环境变量 '{self.ENV_ENABLE_MULTIPLE_DOMAINS}'，仅签到默认的 glados.cloud 域名。")
 
 
 class API:
@@ -494,7 +504,7 @@ class Checker:
     def checkin_all(self):
         """执行所有签到任务"""
         cookie_count = len(self.config.cookies_list)
-        domain_count = len(self.config.DOMAINS)
+        domain_count = len(self.config.domains)
         total_tasks = cookie_count * domain_count
         task_idx = 0
 
@@ -503,7 +513,7 @@ class Checker:
         for cookie_idx, cookie in enumerate(self.config.cookies_list, 1):
             logger.info(f"{LogEmoji.START} ========== 开始处理 Cookie {cookie_idx} ==========")
 
-            for domain in self.config.DOMAINS:
+            for domain in self.config.domains:
                 task_idx += 1
                 logger.info(f"{LogEmoji.INFO} ----- 任务 {task_idx}/{total_tasks}: {LogEmoji.COOKIE}[{cookie_idx}] on {LogEmoji.DOMAIN}[{domain}] -----")
 
