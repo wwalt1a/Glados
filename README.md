@@ -46,7 +46,17 @@
 
 4. 手机推送（非必须）
 
-- 添加1个`repository secret`，命名为`PUSHDEER_SENDKEY`，其值对应 PushDeer key: ([获取地址](https://www.pushdeer.com/product.html))。
+- **PushDeer**: 添加1个 `repository secret`，命名为 `PUSHDEER_SENDKEY`，值为 PushDeer key: ([获取地址](https://www.pushdeer.com/product.html))。
+- **Bark (支持 IPv6 与高度自定义)**: 
+  通过添加以下 `repository secret` 配置高级 Bark 推送：
+  - `BARK_SERVER` (必填): 服务器完整地址 (例: `https://api.day.app` 或非标端口 `https://bark.my.com:8888`)
+  - `BARK_KEY` (必填): 你的 Bark 设备私钥
+  - `BARK_SOUND` (选填): 提示音效名称 (不填默认自带 `fart2` 音效)
+  - `BARK_ICON` (选填): 消息右侧图标直链 (例: `https://a.com/icon.png`)
+
+5. 备用域名联合签到（非必须）
+
+- 默认状态下仅签到主站 `glados.cloud`，速度更快且防风控。若需同时签到备用站点 `railgun.info`，请添加 1 个 `repository secret`，命名为 `GLADOS_ENABLE_MULTIPLE_DOMAINS`，值为 `true`。
 
 ### **star**自己的仓库
 
