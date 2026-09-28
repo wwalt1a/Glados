@@ -44,6 +44,11 @@ jobs:
         pip install pypushdeer
 
     # 执行 签到脚本
+    - name: Setup IPv6 with WARP
+      uses: fscarmen/warp-on-actions@v1.2
+      with:
+        stack: dual
+
     - name: Running checkin
       run: |
         python checkin.py
