@@ -55,6 +55,10 @@ jobs:
       env:
         PUSHDEER_SENDKEY: ${{ secrets.PUSHDEER_SENDKEY }}
         BARK_URL: ${{ secrets.BARK_URL }}
+        BARK_SERVER: ${{ secrets.BARK_SERVER }}
+        BARK_KEY: ${{ secrets.BARK_KEY }}
+        BARK_SOUND: ${{ secrets.BARK_SOUND }}
+        BARK_ICON: ${{ secrets.BARK_ICON }}
         GLADOS_COOKIES: ${{ secrets.GLADOS_COOKIES }}
         GLADOS_EXCHANGE_PLAN: ${{ secrets.GLADOS_EXCHANGE_PLAN }}
         GLADOS_VERBOSE: ${{ secrets.GLADOS_VERBOSE }}

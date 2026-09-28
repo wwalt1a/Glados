@@ -415,12 +415,40 @@ class PushService:
             return False
         # ==============================================================
 
-        # ==================== 2. Bark 完整私有地址推送 ==================
+        # ==================== 2. Bark 推送 ==================
         import os, requests
-        # 读取完整的私有 Bark 地址（例如: https://mybark.com/mykey ）
+        
+        # 新版配置：独立的环境变量
+        bark_server = os.environ.get("BARK_SERVER")
+        bark_key = os.environ.get("BARK_KEY")
+        bark_sound = os.environ.get("BARK_SOUND", "fart2")
+        bark_icon = os.environ.get("BARK_ICON", "")
+        
+        # 旧版配置兼容
         bark_url_base = os.environ.get("BARK_URL")
         
-        if bark_url_base:
+        if bark_server and bark_key:
+            try:
+                payload = {
+                    "device_key": bark_key,
+                    "title": title,
+                    "body": content,
+                    "group": "glados",
+                    "sound": bark_sound,
+                }
+                if bark_icon:
+                    payload["icon"] = bark_icon
+                
+                post_url = f"{bark_server.rstrip('/')}/push"
+                response = requests.post(post_url, json=payload, timeout=10)
+                
+                if response.ok:
+                    logging.info(f"✅ Bark 通知发送成功 (音效: {bark_sound})。")
+                else:
+                    logging.error(f"❌ 发送 Bark 通知失败: HTTP 状态码 {response.status_code}")
+            except Exception as e:
+                logging.error("❌ 发送 Bark 通知失败: 网络请求异常 (为保护隐私已隐去具体报错细节)")
+        elif bark_url_base:
             try:
                 # 替换换行符，防止正文断裂
                 safe_content = content.replace("\n", "%0A")
@@ -428,11 +456,11 @@ class PushService:
                 # 清理环境变量末尾可能多带的斜杠
                 bark_url_base = bark_url_base.rstrip("/")
                 
-                # 拼接完整请求 URL，加入音效 (sound=fart2) 和分组参数
-                bark_url = f"{bark_url_base}/{title}/{safe_content}?group=glados&sound=fart2"
+                # 拼接完整请求 URL，加入音效和分组参数
+                bark_url = f"{bark_url_base}/{title}/{safe_content}?group=glados&sound={bark_sound}"
                 
-                requests.get(bark_url)
-                logging.info("✅ Bark 私有地址通知发送成功 (包含 fart2 音效)。")
+                requests.get(bark_url, timeout=10)
+                logging.info(f"✅ Bark 通知发送成功 (音效: {bark_sound})。")
             except Exception as e:
                 # 隐藏完整报错信息以防泄露 Bark URL 和 Key
                 logging.error("❌ 发送 Bark 通知失败: 网络请求异常 (为保护隐私已隐去具体报错细节)")
