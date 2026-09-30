@@ -63,6 +63,7 @@ jobs:
         GLADOS_EXCHANGE_PLAN: ${{ secrets.GLADOS_EXCHANGE_PLAN }}
         GLADOS_VERBOSE: ${{ secrets.GLADOS_VERBOSE }}
         GLADOS_ENABLE_MULTIPLE_DOMAINS: ${{ secrets.GLADOS_ENABLE_MULTIPLE_DOMAINS }}
+        GLADOS_NOTIFY_ONLY_ON_FAILURE: ${{ secrets.GLADOS_NOTIFY_ONLY_ON_FAILURE }}
 
     - name: Keep alive
       uses: liskin/gh-workflow-keepalive@v1 

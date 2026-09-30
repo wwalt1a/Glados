@@ -58,6 +58,10 @@
 
 - 默认状态下仅签到主站 `glados.cloud`，速度更快且防风控。若需同时签到备用站点 `railgun.info`，请添加 1 个 `repository secret`，命名为 `GLADOS_ENABLE_MULTIPLE_DOMAINS`，值为 `true`。
 
+6. 智能静默免打扰（非必须）
+
+- 如果你不希望每天都被签到成功的通知打扰，可以添加 1 个 `repository secret`，命名为 `GLADOS_NOTIFY_ONLY_ON_FAILURE`，值为 `true`。开启后，只有在**签到失败、Token 失效或发生错误**时，才会触发推送通知。
+
 ### **star**自己的仓库
 
 ![图片加载失败](imgs/4.png)

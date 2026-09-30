@@ -99,6 +99,7 @@ class Config:
     ENV_EXCHANGE_PLAN = "GLADOS_EXCHANGE_PLAN"
     ENV_VERBOSE = "GLADOS_VERBOSE"
     ENV_ENABLE_MULTIPLE_DOMAINS = "GLADOS_ENABLE_MULTIPLE_DOMAINS"
+    ENV_NOTIFY_ONLY_ON_FAILURE = "GLADOS_NOTIFY_ONLY_ON_FAILURE"
 
     """默认兑换计划（none 表示不自动兑换）"""
     DEFAULT_EXCHANGE_PLAN = "none"
@@ -119,6 +120,7 @@ class Config:
         self.exchange_plan: str = self.DEFAULT_EXCHANGE_PLAN
         self.verbose: bool = self.DEFAULT_VERBOSE
         self.domains: List[str] = ["glados.cloud"]
+        self.notify_only_on_failure: bool = False
         self._load_config()
 
     def _load_config(self) -> None:
@@ -128,6 +130,7 @@ class Config:
         exchange_plan_env: Optional[str] = os.environ.get(self.ENV_EXCHANGE_PLAN)
         verbose_env: Optional[str] = os.environ.get(self.ENV_VERBOSE)
         enable_multiple_domains_env: Optional[str] = os.environ.get(self.ENV_ENABLE_MULTIPLE_DOMAINS)
+        notify_only_on_failure_env: Optional[str] = os.environ.get(self.ENV_NOTIFY_ONLY_ON_FAILURE)
 
         if not push_key_env:
             logger.warning(f"{LogEmoji.WARNING} 环境变量 '{self.ENV_PUSH_KEY}' 未设置。")
@@ -178,6 +181,15 @@ class Config:
                 logger.info(f"{LogEmoji.INFO} 环境变量 '{self.ENV_ENABLE_MULTIPLE_DOMAINS}' 未开启，仅签到默认的 glados.cloud 域名。")
         else:
             logger.info(f"{LogEmoji.INFO} 未设置环境变量 '{self.ENV_ENABLE_MULTIPLE_DOMAINS}'，仅签到默认的 glados.cloud 域名。")
+
+        if notify_only_on_failure_env is not None:
+            if notify_only_on_failure_env.lower() in ["true", "1", "yes", "y"]:
+                self.notify_only_on_failure = True
+                logger.info(f"{LogEmoji.INFO} 环境变量 '{self.ENV_NOTIFY_ONLY_ON_FAILURE}' 已开启，仅在签到失败时推送通知。")
+            else:
+                logger.info(f"{LogEmoji.INFO} 环境变量 '{self.ENV_NOTIFY_ONLY_ON_FAILURE}' 未开启，将推送所有签到结果。")
+        else:
+            logger.info(f"{LogEmoji.INFO} 未设置环境变量 '{self.ENV_NOTIFY_ONLY_ON_FAILURE}'，默认推送所有签到结果。")
 
 
 class API:
@@ -411,18 +423,19 @@ class PushService:
         import logging
         
         # ==================== 1. 智能提醒过滤逻辑 ====================
-        need_notify = False
-        
-        if "脚本执行出错" in title or "未找到 cookies" in title:
-            need_notify = True
-        else:
-            for line in content.split('\n'):
-                if ("失败" in line or "异常" in line or "没有权限" in line) and "Today's observation logged" not in line:
-                    need_notify = True
+        if self.config.notify_only_on_failure:
+            need_notify = False
+            
+            if "脚本执行出错" in title or "未找到 cookies" in title:
+                need_notify = True
+            else:
+                for line in content.split('\n'):
+                    if ("失败" in line or "异常" in line or "没有权限" in line) and "Today's observation logged" not in line:
+                        need_notify = True
 
-        if not need_notify:
-            logging.info("🎉 当前签到成功或今日已签到，无需烦人通知，跳过推送！")
-            return False
+            if not need_notify:
+                logging.info("🎉 当前签到成功或今日已签到，根据配置已跳过推送！")
+                return False
         # ==============================================================
 
         # ==================== 2. Bark 推送 ==================
