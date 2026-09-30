@@ -491,6 +491,9 @@ class PushService:
             else:
                 for line in content.split('\n'):
                     if ("失败" in line or "异常" in line or "没有权限" in line) and "Today's observation logged" not in line:
+                        # 如果仅仅是积分不足导致的“兑换失败”，并不属于打卡失败，不需要每天发送通知
+                        if "兑换失败" in line and "签到失败" not in line:
+                            continue
                         need_notify = True
 
             if not need_notify:
