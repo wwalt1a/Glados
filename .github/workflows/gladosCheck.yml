@@ -60,6 +60,7 @@ jobs:
         BARK_SOUND: ${{ secrets.BARK_SOUND }}
         BARK_ICON: ${{ secrets.BARK_ICON }}
         GLADOS_COOKIES: ${{ secrets.GLADOS_COOKIES }}
+        RAILGUN_COOKIES: ${{ secrets.RAILGUN_COOKIES }}
         GLADOS_EXCHANGE_PLAN: ${{ secrets.GLADOS_EXCHANGE_PLAN }}
         GLADOS_VERBOSE: ${{ secrets.GLADOS_VERBOSE }}
         GLADOS_ENABLE_MULTIPLE_DOMAINS: ${{ secrets.GLADOS_ENABLE_MULTIPLE_DOMAINS }}

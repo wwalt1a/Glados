@@ -28,9 +28,21 @@
 
   > 参考格式：koa:sess=eyJ1c2xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxAwMH0=; koa:sess.sig=xJkOxxxxxxxxxxxxxxxtnM;
 
+- 在 GLaDOS 或 Railgun 的签到页面按 `F12`
+
+- 切换到 `Network` 页面下，刷新
+
+![图片加载失败](imgs/2.png)
+
+- 点击第一个选项卡后在 `Request Headers` 下找到 `Cookie`，右键复制 cookie 的值即可
+
+  > 参考格式：koa:sess=eyJ1c2xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxAwMH0=; koa:sess.sig=xJkOxxxxxxxxxxxxxxxtnM;
+
 ![图片加载失败](imgs/3.png)
 
-- 多账号请在 `COOKIES` 中 添加多个 `cookies` 中间使用 `&`连接即可。（例如： `c1&c3&c3...`）
+- **GLaDOS 账号**：添加 `repository secret`，命名为 `GLADOS_COOKIES`（自动定向到 `glados.cloud`）。
+- **Railgun 账号**：添加 `repository secret`，命名为 `RAILGUN_COOKIES`（自动定向到 `railgun.info`）。
+- 注：GLaDOS 与 Railgun 为两套独立账号系统，请分别配置到对应的 Secret 中。多账号中间使用 `&` 连接（例如：`c1&c2...`）。
 
 3. 配置积分兑换策略（非必须）
 
@@ -54,11 +66,7 @@
   - `BARK_SOUND` (选填): 提示音效名称 (不填默认自带 `fart2` 音效)
   - `BARK_ICON` (选填): 消息右侧图标直链 (例: `https://a.com/icon.png`)
 
-5. 备用域名联合签到（非必须）
-
-- 默认状态下仅签到主站 `glados.cloud`，速度更快且防风控。若需同时签到备用站点 `railgun.info`，请添加 1 个 `repository secret`，命名为 `GLADOS_ENABLE_MULTIPLE_DOMAINS`，值为 `true`。
-
-6. 智能静默免打扰（非必须）
+5. 智能静默免打扰（非必须）
 
 - 如果你不希望每天都被签到成功的通知打扰，可以添加 1 个 `repository secret`，命名为 `GLADOS_NOTIFY_ONLY_ON_FAILURE`，值为 `true`。开启后，只有在**签到失败、Token 失效或发生错误**时，才会触发推送通知。
 
@@ -82,6 +90,7 @@
 - **2026-04**: 优化代码逻辑，优化日志输出，支持[新版域名](https://railgun.info) ，在 GLADOS_COOKIES 中添加新版域名下的 cookies 即可使用。
 - **2026-09**: 新增设备平台自适应重试（code 4 无需手动配置 UA 即可自动恢复）；默认关闭自动兑换，需显式配置 `GLADOS_EXCHANGE_PLAN` 才启用。
 - **2026-09**: 新增网络层重试/退避：`requests.Session` 挂载 `HTTPAdapter` + `urllib3.Retry`（total=3、指数退避 1/2/4s、对 429/5xx 自动重试），降低 CI 网络抖动导致的误报失败；业务 200 响应不受影响。
+- **2026-10**: 支持 GLaDOS 与 Railgun 独立账号系统解耦签到，新增 `RAILGUN_COOKIES` 环境变量支持，定向签到避免跨域鉴权失效，通知中清晰展示对应域名与状态。
 
 
 ## 问题排查与定位
