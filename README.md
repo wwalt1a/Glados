@@ -28,7 +28,7 @@
 1. Fork 本仓库。
 2. 在自己的仓库进入 `Settings` → `Secrets and variables` → `Actions` → `New repository secret`，至少添加 `GLADOS_COOKIES`（或 `RAILGUN_COOKIES`）。
 3. 打开 `Actions` → `auto check` → `Run workflow` 手动跑一次，看到「签到成功」或「重复签到」即完成。
-4. 之后每天 **北京时间 上午 11:08** 自动运行。
+4. 之后每天在 **北京时间 11:00 ~ 12:00 之间随机时间** 自动运行。
 
 | Secret | 必填 | 说明 |
 | --- | :---: | --- |
@@ -335,7 +335,7 @@ Windows PowerShell 用 `$env:GLADOS_COOKIES='[...]'`。
 - 采用面向对象账号模型与时间预算控制，防止 GitHub Actions 长时间超时挂起。
 - 优化失败原因提示；签到被拒、兑换未完成等场景给出可执行建议。
 - 日志自动脱敏：`koa:*` / `gld:*` / Bearer → `[REDACTED]`。
-- GitHub Action 定时任务执行时间调整为北京时间每日上午 11:08。
+- GitHub Action 定时任务调整为北京时间每日 11:00 ~ 12:00 之间随机运行。
 
 ## ⭐Star 趋势
 
