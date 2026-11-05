@@ -8,13 +8,22 @@ on:
       - 'README.md'
       - 'imgs/**'
   schedule:
-    - cron: '15 8,17 * * *'
+    # 北京时间 上午 11:08 (UTC 03:08)
+    - cron: '8 3 * * *'
+
+# 定时与手动触发可能重叠：同一时间只保留一个运行，避免重复签到与重复推送
+concurrency:
+  group: glados-checkin
+  cancel-in-progress: false
 
 jobs:
   build:
     name: glados/railgun checkin
     runs-on: ubuntu-latest
-      
+
+    # 脚本自带运行预算；这里再兜底，避免异常情况卡住
+    timeout-minutes: 15
+
     permissions:
       contents: read
       actions: write
@@ -23,7 +32,7 @@ jobs:
       matrix:
         python-version: [3.13]
 
-    # 这里加入全局环境变量，强制后续所有第三方 actions 兼容 Node.js 24 运行环境
+    # 强制后续所有第三方 actions 兼容 Node.js 24 运行环境
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
@@ -36,12 +45,11 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
 
-    # 安装 python 库
+    # 安装 python 依赖
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install requests
-        pip install pypushdeer
+        pip install -r requirements.txt
 
     # 执行 签到脚本
     - name: Setup IPv6 with WARP
@@ -54,6 +62,7 @@ jobs:
         python checkin.py
       env:
         PUSHDEER_SENDKEY: ${{ secrets.PUSHDEER_SENDKEY }}
+        SERVERCHAN_SENDKEY: ${{ secrets.SERVERCHAN_SENDKEY }}
         BARK_URL: ${{ secrets.BARK_URL }}
         BARK_SERVER: ${{ secrets.BARK_SERVER }}
         BARK_KEY: ${{ secrets.BARK_KEY }}
@@ -63,13 +72,15 @@ jobs:
         RAILGUN_COOKIES: ${{ secrets.RAILGUN_COOKIES }}
         GLADOS_EXCHANGE_PLAN: ${{ secrets.GLADOS_EXCHANGE_PLAN }}
         GLADOS_VERBOSE: ${{ secrets.GLADOS_VERBOSE }}
-        GLADOS_ENABLE_MULTIPLE_DOMAINS: ${{ secrets.GLADOS_ENABLE_MULTIPLE_DOMAINS }}
         GLADOS_NOTIFY_ONLY_ON_FAILURE: ${{ secrets.GLADOS_NOTIFY_ONLY_ON_FAILURE }}
 
+    # 签到失败（配置错误会 exit 1）时也要保活，否则恰好错过最需要提醒的那次
     - name: Keep alive
+      if: ${{ !cancelled() }}
       uses: liskin/gh-workflow-keepalive@v1 
         
     - name: Delete workflow runs
+      if: ${{ !cancelled() }}
       uses: Mattraks/delete-workflow-runs@v2
       with:
         token: ${{ github.token }}
