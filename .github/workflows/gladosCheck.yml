@@ -21,7 +21,7 @@ jobs:
     name: glados/railgun checkin
     runs-on: ubuntu-latest
 
-    # 允许随机等待（最大约 50 分钟）+ 脚本执行预算；避免被 Actions 强制杀掉
+    # 允许随机等待（最大约 50 分钟）+ 脚本执行预算；在 75 分钟内受 Actions 官方完整支持
     timeout-minutes: 75
 
     permissions:
@@ -58,11 +58,23 @@ jobs:
         stack: dual
 
     # 仅在定时触发 (schedule) 时执行 0~50 分钟随机延时，使实际签到时间均匀分布在 11:00 ~ 12:00 之间
-    # 手动触发 (workflow_dispatch) 或 push 时自动跳过延时，方便即时调试
+    # 采用每 5 分钟心跳日志，防止长时间静默断连；手动触发 (workflow_dispatch) 自动跳过，秒级执行
     - name: Random delay between 11:00 and 12:00
       if: github.event_name == 'schedule'
       run: |
-        python -c "import random, time; delay = random.randint(0, 3000); print(f'Random delay: {delay}s ({delay // 60}m {delay % 60}s) before checkin...'); time.sleep(delay)"
+        python - << 'EOF'
+        import random, time, sys
+        delay = random.randint(0, 3000)
+        print(f"Random delay: {delay}s ({delay // 60}m {delay % 60}s) before checkin...", flush=True)
+        elapsed = 0
+        while elapsed < delay:
+            step = min(300, delay - elapsed)
+            time.sleep(step)
+            elapsed += step
+            if elapsed < delay:
+                print(f"Still waiting... ({elapsed // 60}m / {delay // 60}m elapsed)", flush=True)
+        print("Delay completed, proceeding to checkin...", flush=True)
+        EOF
 
     - name: Running checkin
       run: |
