@@ -764,19 +764,22 @@ class API:
             ch_platform = '"Windows"'
             ch_mobile = "?0"
 
+        is_firefox = "firefox" in ua_lower
         self.headers = {
             "origin": f"https://{domain}",
             "referer": f"https://{domain}/console/checkin",
             "user-agent": ua,
             "accept": "application/json, text/plain, */*",
             "accept-language": "zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7",
-            "sec-ch-ua": '"Chromium";v="120", "Not?A_Brand";v="24", "Google Chrome";v="120"',
-            "sec-ch-ua-mobile": ch_mobile,
-            "sec-ch-ua-platform": ch_platform,
             "sec-fetch-dest": "empty",
             "sec-fetch-mode": "cors",
             "sec-fetch-site": "same-origin",
         }
+        # Firefox 默认不发送 Chromium Client Hints；仅 Chromium 系 UA 注入 sec-ch-ua 相关头
+        if not is_firefox:
+            self.headers["sec-ch-ua"] = '"Chromium";v="120", "Not?A_Brand";v="24", "Google Chrome";v="120"'
+            self.headers["sec-ch-ua-mobile"] = ch_mobile
+            self.headers["sec-ch-ua-platform"] = ch_platform
         self.session = requests.Session()
         self.session.headers.update(self.headers)
         adapter = HTTPAdapter(max_retries=retry)
@@ -918,21 +921,26 @@ class API:
         if user_agent:
             headers["user-agent"] = user_agent
             ua_lower = user_agent.lower()
-            if "mac" in ua_lower:
-                headers["sec-ch-ua-platform"] = '"macOS"'
-                headers["sec-ch-ua-mobile"] = "?0"
-            elif "linux" in ua_lower and "android" not in ua_lower:
-                headers["sec-ch-ua-platform"] = '"Linux"'
-                headers["sec-ch-ua-mobile"] = "?0"
-            elif "iphone" in ua_lower or "ipad" in ua_lower:
-                headers["sec-ch-ua-platform"] = '"iOS"'
-                headers["sec-ch-ua-mobile"] = "?1"
-            elif "android" in ua_lower:
-                headers["sec-ch-ua-platform"] = '"Android"'
-                headers["sec-ch-ua-mobile"] = "?1"
+            if "firefox" in ua_lower:
+                for k in ("sec-ch-ua", "sec-ch-ua-mobile", "sec-ch-ua-platform"):
+                    headers.pop(k, None)
             else:
-                headers["sec-ch-ua-platform"] = '"Windows"'
-                headers["sec-ch-ua-mobile"] = "?0"
+                if "mac" in ua_lower:
+                    headers["sec-ch-ua-platform"] = '"macOS"'
+                    headers["sec-ch-ua-mobile"] = "?0"
+                elif "linux" in ua_lower and "android" not in ua_lower:
+                    headers["sec-ch-ua-platform"] = '"Linux"'
+                    headers["sec-ch-ua-mobile"] = "?0"
+                elif "iphone" in ua_lower or "ipad" in ua_lower:
+                    headers["sec-ch-ua-platform"] = '"iOS"'
+                    headers["sec-ch-ua-mobile"] = "?1"
+                elif "android" in ua_lower:
+                    headers["sec-ch-ua-platform"] = '"Android"'
+                    headers["sec-ch-ua-mobile"] = "?1"
+                else:
+                    headers["sec-ch-ua-platform"] = '"Windows"'
+                    headers["sec-ch-ua-mobile"] = "?0"
+                headers["sec-ch-ua"] = '"Chromium";v="120", "Not?A_Brand";v="24", "Google Chrome";v="120"'
 
         try:
             session = self.session if retry else self._no_retry_session
