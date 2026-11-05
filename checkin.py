@@ -1,4 +1,5 @@
 import functools
+import hashlib
 import json
 import logging
 import os
@@ -41,6 +42,7 @@ class APIEndpoint:
     """API 路径"""
 
     CHECKIN = "/api/user/checkin"
+    CHALLENGE = "/api/user/checkin/challenge"
     STATUS = "/api/user/status"
     POINTS = "/api/user/points"
     EXCHANGE = "/api/user/exchange"
@@ -744,7 +746,37 @@ class API:
                 raise_on_status=False,
             )
 
-        self.headers = {"origin": f"https://{domain}", "user-agent": self.user_agent or PLATFORM_UA["Windows"]}
+        ua = self.user_agent or PLATFORM_UA["Windows"]
+        ua_lower = ua.lower()
+        if "mac" in ua_lower:
+            ch_platform = '"macOS"'
+            ch_mobile = "?0"
+        elif "linux" in ua_lower and "android" not in ua_lower:
+            ch_platform = '"Linux"'
+            ch_mobile = "?0"
+        elif "iphone" in ua_lower or "ipad" in ua_lower:
+            ch_platform = '"iOS"'
+            ch_mobile = "?1"
+        elif "android" in ua_lower:
+            ch_platform = '"Android"'
+            ch_mobile = "?1"
+        else:
+            ch_platform = '"Windows"'
+            ch_mobile = "?0"
+
+        self.headers = {
+            "origin": f"https://{domain}",
+            "referer": f"https://{domain}/console/checkin",
+            "user-agent": ua,
+            "accept": "application/json, text/plain, */*",
+            "accept-language": "zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7",
+            "sec-ch-ua": '"Chromium";v="120", "Not?A_Brand";v="24", "Google Chrome";v="120"',
+            "sec-ch-ua-mobile": ch_mobile,
+            "sec-ch-ua-platform": ch_platform,
+            "sec-fetch-dest": "empty",
+            "sec-fetch-mode": "cors",
+            "sec-fetch-site": "same-origin",
+        }
         self.session = requests.Session()
         self.session.headers.update(self.headers)
         adapter = HTTPAdapter(max_retries=retry)
@@ -875,6 +907,7 @@ class API:
         method: str,
         path: str,
         data: Optional[Dict] = None,
+        json_body: Optional[Dict] = None,
         user_agent: Optional[str] = None,
         timeout: Optional[Tuple[int, int]] = None,
         retry: bool = True,
@@ -884,11 +917,31 @@ class API:
         headers = {**self.headers, "cookie": self.cookie}
         if user_agent:
             headers["user-agent"] = user_agent
+            ua_lower = user_agent.lower()
+            if "mac" in ua_lower:
+                headers["sec-ch-ua-platform"] = '"macOS"'
+                headers["sec-ch-ua-mobile"] = "?0"
+            elif "linux" in ua_lower and "android" not in ua_lower:
+                headers["sec-ch-ua-platform"] = '"Linux"'
+                headers["sec-ch-ua-mobile"] = "?0"
+            elif "iphone" in ua_lower or "ipad" in ua_lower:
+                headers["sec-ch-ua-platform"] = '"iOS"'
+                headers["sec-ch-ua-mobile"] = "?1"
+            elif "android" in ua_lower:
+                headers["sec-ch-ua-platform"] = '"Android"'
+                headers["sec-ch-ua-mobile"] = "?1"
+            else:
+                headers["sec-ch-ua-platform"] = '"Windows"'
+                headers["sec-ch-ua-mobile"] = "?0"
 
         try:
             session = self.session if retry else self._no_retry_session
             if method.upper() == "POST":
-                response = session.post(url, headers=headers, data=data, timeout=timeout or self.timeout)
+                if json_body is not None:
+                    headers["content-type"] = "application/json;charset=UTF-8"
+                    response = session.post(url, headers=headers, json=json_body, timeout=timeout or self.timeout)
+                else:
+                    response = session.post(url, headers=headers, data=data, timeout=timeout or self.timeout)
             elif method.upper() == "GET":
                 response = session.get(url, headers=headers, timeout=timeout or self.timeout)
             else:
@@ -919,9 +972,41 @@ class API:
         snippet = "（HTML 响应，已省略）" if is_html else body[:300] + ("..." if len(body) > 300 else "")
         self.log(LogEmoji.WARNING, f"向 {url} 请求失败，状态码 {status}。响应: {snippet}", force=True)
 
+    @safe_call(default=None)
+    def fetch_challenge(self, user_agent: Optional[str] = None) -> Optional[str]:
+        """请求 /api/user/checkin/challenge 获取 challenge 随机数 (nonce)"""
+        response = self.request("GET", APIEndpoint.CHALLENGE, user_agent=user_agent, retry=False)
+        if response is None:
+            return None
+        data = self._json_dict(response, "Challenge")
+        if data is None:
+            return None
+        nonce = data.get("nonce")
+        if not nonce and isinstance(data.get("data"), dict):
+            nonce = data["data"].get("nonce")
+        return str(nonce).strip() if nonce else None
+
     def _checkin_attempt(self, user_agent: str) -> Optional[Dict]:
-        """发起一次签到请求并返回解析后的响应体；请求失败或响应非 JSON 返回 None"""
-        response = self.request("POST", APIEndpoint.CHECKIN, data={"token": self.domain}, user_agent=user_agent)
+        """发起一次签到请求。优先获取 challenge 与计算 proof 验证，若未获取则回退基础模式。"""
+        payload: Dict[str, Any] = {"token": self.domain}
+
+        nonce = self.fetch_challenge(user_agent=user_agent)
+        if nonce:
+            proof = hashlib.sha256(f"{nonce}.glados-observe-v1".encode("utf-8")).hexdigest()
+            payload["nonce"] = nonce
+            payload["proof"] = proof
+            self.log(LogEmoji.INFO, f"成功获取 challenge (nonce={nonce[:8]}...)，已生成 proof 验证签名")
+            # 模拟前端约 2.5 秒计算等待，避免请求过快触发风控
+            time.sleep(2.5)
+        else:
+            self.log(LogEmoji.WARNING, "未获取到 challenge 验证，将回退至基础签到模式")
+
+        response = self.request(
+            "POST",
+            APIEndpoint.CHECKIN,
+            json_body=payload,
+            user_agent=user_agent,
+        )
         if response is None:
             return None
         try:
