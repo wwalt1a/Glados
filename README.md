@@ -8,6 +8,8 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.13-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![GLaDOS Check-in](https://github.com/wwalt1a/Glados/actions/workflows/gladosCheck.yml/badge.svg?branch=master)](https://github.com/wwalt1a/Glados/actions/workflows/gladosCheck.yml)
+[![Last commit](https://img.shields.io/github/last-commit/wwalt1a/Glados?branch=master)](https://github.com/wwalt1a/Glados/commits/master)
 
 [快速开始](#快速开始) · [账号配置](#配置-glados_cookies) · [积分兑换](#积分兑换) · [消息推送](#消息推送) · [问题排查](#问题排查) · [常见问题](#常见问题faq)
 
@@ -336,6 +338,7 @@ Windows PowerShell 用 `$env:GLADOS_COOKIES='[...]'`。
 - 优化失败原因提示；签到被拒、兑换未完成等场景给出可执行建议。
 - 日志自动脱敏：`koa:*` / `gld:*` / Bearer → `[REDACTED]`。
 - GitHub Action 定时任务调整为北京时间每日 11:00 ~ 12:00 之间随机运行。
+- 加入 challenge 校验机制；针对 Railgun 等无 challenge 站点自动平滑回退旧协议。
 
 ## ⭐Star 趋势
 
@@ -346,7 +349,7 @@ Windows PowerShell 用 `$env:GLADOS_COOKIES='[...]'`。
 ## 📄声明
 
 - 不保证稳定运行，接口与风控策略可能随时调整。
-- 只调用与网页端一致的公开 API，不绕过验证码或风控。
+- 只调用网页端使用的公开 API，不破解验证码；服务端风控仍可能拒绝或降权。
 - 使用风险自负；因使用本工具导致的账号风控、限权或封禁由使用者自行承担。
 - 本项目以 [MIT](LICENSE) 发布。
 

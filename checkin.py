@@ -42,6 +42,7 @@ class APIEndpoint:
     """API 路径"""
 
     CHECKIN = "/api/user/checkin"
+    CHECKIN_CHALLENGE = "/api/user/checkin/challenge"
     CHALLENGE = "/api/user/checkin/challenge"
     STATUS = "/api/user/status"
     POINTS = "/api/user/points"
@@ -96,6 +97,10 @@ POINTS_TIMEOUT = (10, 30)
 
 """单次运行总预算（秒）。到期后跳过剩余账号，避免 Actions 长时间挂起"""
 RUN_BUDGET_SECONDS = 300
+
+"""签到 challenge 的 proof 后缀与最小等待（与网页端当前实现一致）"""
+CHALLENGE_SUFFIX = "glados-observe-v1"
+CHALLENGE_DELAY_SECONDS = 2.5
 
 """Cookie 中标识登录态的会话字段"""
 SESSION_FIELDS = ("koa:sess=", "gld:sess=")
@@ -983,7 +988,10 @@ class API:
     @safe_call(default=None)
     def fetch_challenge(self, user_agent: Optional[str] = None) -> Optional[str]:
         """请求 /api/user/checkin/challenge 获取 challenge 随机数 (nonce)"""
-        response = self.request("GET", APIEndpoint.CHALLENGE, user_agent=user_agent, retry=False)
+        # Railgun 独立站点目前未部署 challenge 接口，无需请求以规避 404 警告
+        if "railgun" in self.domain.lower():
+            return None
+        response = self.request("GET", APIEndpoint.CHECKIN_CHALLENGE, user_agent=user_agent, retry=False)
         if response is None:
             return None
         data = self._json_dict(response, "Challenge")
@@ -1000,12 +1008,12 @@ class API:
 
         nonce = self.fetch_challenge(user_agent=user_agent)
         if nonce:
-            proof = hashlib.sha256(f"{nonce}.glados-observe-v1".encode("utf-8")).hexdigest()
+            proof = hashlib.sha256(f"{nonce}.{CHALLENGE_SUFFIX}".encode("utf-8")).hexdigest()
             payload["nonce"] = nonce
             payload["proof"] = proof
             self.log(LogEmoji.INFO, f"成功获取 challenge (nonce={nonce[:8]}...)，已生成 proof 验证签名")
             # 模拟前端约 2.5 秒计算等待，避免请求过快触发风控
-            time.sleep(2.5)
+            time.sleep(CHALLENGE_DELAY_SECONDS)
         else:
             self.log(LogEmoji.WARNING, "未获取到 challenge 验证，将回退至基础签到模式")
 
